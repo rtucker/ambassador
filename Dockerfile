@@ -21,12 +21,14 @@ RUN echo "@edge https://nl.alpinelinux.org/alpine/edge/main" >> /etc/apk/reposit
  && update-ca-certificates \
  && rm -rf /tmp/* /var/cache/apk/*
 
-COPY index.js package.json yarn.lock /ambassador/
+COPY package.json yarn.lock /ambassador/
 
 RUN yarn
 
 RUN addgroup -g ${GID} ambassador && adduser -h /ambassador -s /bin/sh -D -G ambassador -u ${UID} ambassador && chown -R ambassador:ambassador /ambassador
 
 USER ambassador
+
+COPY index.js /ambassador/
 
 ENTRYPOINT ["/sbin/tini", "--"]
