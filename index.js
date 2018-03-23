@@ -10,6 +10,7 @@ var INSTANCE_HOST = process.env.INSTANCE_HOST;
 var BOOSTS_PER_CYCLE = process.env.BOOSTS_PER_CYCLE || 2;
 var THRESHOLD_INTERVAL_DAYS = process.env.THRESHOLD_INTERVAL_DAYS || 30;
 var BOOST_MAX_DAYS = process.env.BOOST_MAX_DAYS || 5;
+var THRESHOLD_CHECK_INTERVAL = process.env.THRESHOLD_CHECK_INTERVAL || 15; // cycles
 
 var config = {
   user: process.env.DB_USER || 'ambassador',
@@ -55,6 +56,9 @@ console.log('\tBOOSTS_PER_CYCLE:', BOOSTS_PER_CYCLE);
 console.log('\tTHRESHOLD_INTERVAL_DAYS:', THRESHOLD_INTERVAL_DAYS);
 console.log('\tBOOST_MAX_DAYS:', BOOST_MAX_DAYS);
 
+var threshold_downcount = 0;
+var threshold = 0;
+
 function cycle() {
   console.log('Cycle beginning');
   var client = new pg.Client(config);
@@ -64,17 +68,22 @@ function cycle() {
       return console.dir(err);
     }
 
-    var threshold = 0;
+    if (threshold_downcount <= 0) {
+      console.log('Calculating threshold...');
+      client.query(thresh_query, [], function (err, result) {
+        if(err) {
+          console.error('error running threshold query');
+          throw err;
+        }
 
-    client.query(thresh_query, [], function (err, result) {
-      if(err) {
-        console.error('error running threshold query');
-        throw err;
-      }
+        threshold = result.rows[0].threshold;
+        console.log('Current threshold: ' + threshold);
+      });
 
-      threshold = result.rows[0].threshold;
-      console.log('Current threshold: ' + threshold);
-    });
+      threshold_downcount = THRESHOLD_CHECK_INTERVAL;
+    } else {
+      threshold_downcount--;
+    }
 
     whoami(function (account_id) {
       if (threshold < 1) {
