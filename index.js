@@ -11,6 +11,7 @@ var BOOSTS_PER_CYCLE = process.env.BOOSTS_PER_CYCLE || 2;
 var THRESHOLD_INTERVAL_DAYS = process.env.THRESHOLD_INTERVAL_DAYS || 30;
 var BOOST_MAX_DAYS = process.env.BOOST_MAX_DAYS || 5;
 var THRESHOLD_CHECK_INTERVAL = process.env.THRESHOLD_CHECK_INTERVAL || 15; // cycles
+var CYCLE_INTERVAL = process.env.CYCLE_INTERVAL || 15; // minutes
 
 var config = {
   user: process.env.DB_USER || 'ambassador',
@@ -55,60 +56,65 @@ console.log('\tINSTANCE_HOST:', INSTANCE_HOST);
 console.log('\tBOOSTS_PER_CYCLE:', BOOSTS_PER_CYCLE);
 console.log('\tTHRESHOLD_INTERVAL_DAYS:', THRESHOLD_INTERVAL_DAYS);
 console.log('\tBOOST_MAX_DAYS:', BOOST_MAX_DAYS);
+console.log('\tTHRESHOLD_CHECK_INTERVAL:', THRESHOLD_CHECK_INTERVAL);
+console.log('\tCYCLE_INTERVAL:', CYCLE_INTERVAL);
 
-var threshold_downcount = 0;
-var threshold = 0;
+var g_threshold_downcount = 0;
+var g_threshold = 0;
+
+function getThreshold(client, f) {
+  if (g_threshold_downcount <= 0 || g_threshold <= 0) {
+    console.log('Threshold is stale, recalculating...');
+    client.query(thresh_query, [], function (err, result) {
+      if (err) {
+        throw "error running threshold query: " + err;
+      }
+
+      g_threshold = result.rows[0].threshold;
+      g_threshold_downcount = THRESHOLD_CHECK_INTERVAL;
+      return f(g_threshold);
+    });
+  } else {
+    g_threshold_downcount--;
+    console.log('Cycles until next threshold update: ' + g_threshold_downcount);
+    return f(g_threshold);
+  }
+}
 
 function cycle() {
   console.log('Cycle beginning');
   var client = new pg.Client(config);
+
   client.connect(function (err) {
     if (err) {
       console.error('error connecting to client');
       return console.dir(err);
     }
 
-    if (threshold_downcount <= 0) {
-      console.log('Calculating threshold...');
-      client.query(thresh_query, [], function (err, result) {
-        if(err) {
-          console.error('error running threshold query');
-          throw err;
-        }
-
-        threshold = result.rows[0].threshold;
-        console.log('Current threshold: ' + threshold);
-      });
-
-      threshold_downcount = THRESHOLD_CHECK_INTERVAL;
-    } else {
-      threshold_downcount--;
-    }
-
     whoami(function (account_id) {
-      if (threshold < 1) {
-        console.error('threshold too low: ' + threshold);
-        throw "threshold too low";
-      }
-      client.query(query, [threshold, account_id, BOOSTS_PER_CYCLE], function (err, result) {
-        if(err) {
-          console.error('error running toot query');
-          throw err;
+      getThreshold(client, function (threshold) {
+        console.log('Current threshold: ' + threshold);
+        if (threshold < 1) {
+          throw "threshold too low: " + threshold;
         }
 
-        client.end(function (err) {
+        client.query(query, [threshold, account_id, BOOSTS_PER_CYCLE], function (err, result) {
           if (err) {
-            console.error('error disconnecting from client');
-            throw err;
+            throw "error running toot query: " + err;
           }
+
+          client.end(function (err) {
+            if (err) {
+              throw "error disconnecting from client: " + err;
+            }
+          });
+
+          boost(result.rows);
+          console.log('Cycle complete');
         });
-
-        boost(result.rows);
       });
-    });
+    })
   });
-
-  console.log('Cycle complete');
 }
 
 var M = new mastodon({
@@ -147,5 +153,4 @@ function boost(rows) {
 }
 
 cycle();
-// Run every 15 minutes
-setInterval(cycle, 1000 * 60 * 15);
+setInterval(cycle, 1000 * 60 * CYCLE_INTERVAL);
