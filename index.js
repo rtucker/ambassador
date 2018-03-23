@@ -26,10 +26,10 @@ var thresh_query = `SELECT ceil(avg(favourites_count)) AS threshold
   FROM public_toots
   WHERE
     favourites_count > 1
-    AND created_at > NOW() - INTERVAL '` + THRESHOLD_INTERVAL_DAYS + ` days'`
+    AND updated_at > NOW() - INTERVAL '` + THRESHOLD_INTERVAL_DAYS + ` days'`
 
 // Find all toots we haven't boosted yet, but ought to
-var query = `SELECT id, created_at
+var query = `SELECT id, updated_at
   FROM public_toots
   WHERE
     favourites_count >= (` + thresh_query + `)
@@ -40,8 +40,8 @@ var query = `SELECT id, created_at
         pt2.reblog_of_id = public_toots.id
         AND pt2.account_id = $1
     )
-    AND created_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
-  ORDER BY created_at
+    AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
+  ORDER BY id DESC
   LIMIT $2`
 
 console.dir('STARTING AMBASSADOR');
