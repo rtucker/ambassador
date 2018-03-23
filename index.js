@@ -32,17 +32,17 @@ var thresh_query = `SELECT ceil(avg(favourites_count)) AS threshold
 var query = `SELECT id, updated_at
   FROM public_toots
   WHERE
-    favourites_count >= (` + thresh_query + `)
+    favourites_count >= $1
     AND NOT EXISTS (
       SELECT 1
       FROM public_toots AS pt2
       WHERE
         pt2.reblog_of_id = public_toots.id
-        AND pt2.account_id = $1
+        AND pt2.account_id = $2
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
   ORDER BY id DESC
-  LIMIT $2`
+  LIMIT $3`
 
 console.dir('STARTING AMBASSADOR');
 console.log('\tDB_USER:', DB_USER);
@@ -64,17 +64,24 @@ function cycle() {
       return console.dir(err);
     }
 
+    var threshold = 0;
+
     client.query(thresh_query, [], function (err, result) {
       if(err) {
         console.error('error running threshold query');
         throw err;
       }
 
-      console.log('Current threshold: ' + result.rows[0].threshold);
+      threshold = result.rows[0].threshold;
+      console.log('Current threshold: ' + threshold);
     });
 
     whoami(function (account_id) {
-      client.query(query, [account_id, BOOSTS_PER_CYCLE], function (err, result) {
+      if (threshold < 1) {
+        console.error('threshold too low: ' + threshold);
+        throw "threshold too low";
+      }
+      client.query(query, [threshold, account_id, BOOSTS_PER_CYCLE], function (err, result) {
         if(err) {
           console.error('error running toot query');
           throw err;
@@ -91,6 +98,8 @@ function cycle() {
       });
     });
   });
+
+  console.log('Cycle complete');
 }
 
 var M = new mastodon({
