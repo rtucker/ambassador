@@ -43,7 +43,6 @@ var query = `SELECT id, updated_at
         AND pt2.account_id = $2
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
-  ORDER BY id DESC
   LIMIT $3`
 
 console.dir('STARTING AMBASSADOR');
