@@ -43,7 +43,20 @@ var query = `SELECT id, updated_at
         AND pt2.account_id = $2
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
+  ORDER BY RANDOM()
   LIMIT $3`
+
+// adding this to the WHERE clause would let it skip cases where we're
+// blocked by the original poster, but we don't have read privs to blocks
+// and I'm not sure I want to change that.  -rt
+//
+//    AND NOT EXISTS (
+//      SELECT 1
+//      FROM blocks AS bl1
+//      WHERE
+//        public_toots.account_id = bl1.account_id
+//        AND bl1.target_account_id = 13104
+//    )
 
 console.dir('STARTING AMBASSADOR');
 console.log('\tDB_USER:', DB_USER);
