@@ -12,6 +12,7 @@ var THRESHOLD_INTERVAL_DAYS = process.env.THRESHOLD_INTERVAL_DAYS || 30;
 var BOOST_MAX_DAYS = process.env.BOOST_MAX_DAYS || 5;
 var THRESHOLD_CHECK_INTERVAL = process.env.THRESHOLD_CHECK_INTERVAL || 15; // cycles
 var CYCLE_INTERVAL = process.env.CYCLE_INTERVAL || 15; // minutes
+var BOOST_MIN_HOURS = process.env.BOOST_MIN_HOURS || 12;
 
 var config = {
   user: process.env.DB_USER || 'ambassador',
@@ -43,6 +44,7 @@ var query = `SELECT id, updated_at
         AND pt2.account_id = $2
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
+    AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'
   ORDER BY RANDOM()
   LIMIT $3`
 
