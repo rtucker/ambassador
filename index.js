@@ -138,15 +138,19 @@ function whoami(f) {
 
 function boost(rows) {
   rows.forEach(function(row) {
+    console.log('boosting status #' + row.id);
     M.post('/statuses/' + row.id + '/reblog', function(err, result) {
       if (err) {
         if (err.message === 'Validation failed: Reblog of status already exists') {
           return console.log('Warning: tried to boost #' + row.id + ' but it had already been boosted by this account.');
         }
 
+        if (err.message === 'This action is not allowed') {
+          return console.log('Warning: tried to boost #' + row.id + ' but the action was not allowed.');
+        }
+
         return console.log(err);
       }
-      console.log('boosted status #' + row.id);
     });
   })
 }
