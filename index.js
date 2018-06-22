@@ -43,6 +43,12 @@ var query = `SELECT id, updated_at
         pt2.reblog_of_id = public_toots.id
         AND pt2.account_id = $2
     )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM blocks_ambassador
+      WHERE
+        public_toots.account_id = blocks_ambassador.account_id
+    )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
     AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'
   ORDER BY RANDOM()

@@ -18,8 +18,15 @@ CREATE VIEW public_toots AS
    WHERE visibility = 0
 ;
 
+-- Change 13104 to your ambassador's account ID
+CREATE VIEW blocks_ambassador AS
+  SELECT account_id
+    FROM blocks
+    WHERE target_account_id = 13104;
+
 -- Make sure the role doesn't have access to anything undesireable
 REVOKE ALL FROM ambassador;
 
 -- Let ambassador select from the view
 GRANT SELECT ON public_toots TO ambassador;
+GRANT SELECT ON blocks_ambassador TO ambassador;
