@@ -13,8 +13,12 @@ CREATE USER ambassador;
 
 -- Now, create the view that ambassador actually uses
 CREATE VIEW public_toots AS
-  SELECT *
+  SELECT 
+   statuses.id, statuses.reblog_of_id, statuses.account_id,
+   statuses.updated_at, status_stats.favourites_count
     FROM statuses
+    LEFT OUTER JOIN status_stats
+     ON statuses.id = status_stats.status_id
    WHERE visibility = 0
 ;
 
