@@ -12,6 +12,7 @@ CREATE USER ambassador;
 
 
 -- Now, create the view that ambassador actually uses
+DROP VIEW IF EXISTS public_toots;
 CREATE VIEW public_toots AS
   SELECT 
    statuses.id, statuses.reblog_of_id, statuses.account_id,
@@ -19,11 +20,9 @@ CREATE VIEW public_toots AS
     FROM statuses
     LEFT OUTER JOIN status_stats
      ON statuses.id = status_stats.status_id
-    LEFT OUTER JOIN accounts
-     ON statuses.account_id = accounts.id
    WHERE statuses.visibility = 0
     AND statuses.updated_at > NOW() - INTERVAL '30 days'
-    AND accounts.domain is null
+    AND statuses.local IS TRUE
     AND NOT EXISTS (
      SELECT 1 FROM blocks
       WHERE statuses.account_id = blocks.account_id
