@@ -20,9 +20,12 @@ CREATE VIEW public_toots AS
     FROM statuses
     LEFT OUTER JOIN status_stats
      ON statuses.id = status_stats.status_id
+    LEFT OUTER JOIN accounts
+     ON statuses.account_id = accounts.id
    WHERE statuses.visibility = 0
     AND statuses.updated_at > NOW() - INTERVAL '30 days'
     AND statuses.local IS TRUE
+    AND (accounts.id = 13104 OR accounts.note NOT ILIKE '%#nobot%')
     AND NOT EXISTS (
      SELECT 1 FROM blocks
       WHERE statuses.account_id = blocks.account_id
