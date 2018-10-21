@@ -32,7 +32,7 @@ var thresh_query = `SELECT ceil(avg(favourites_count)) AS threshold
     AND updated_at > NOW() - INTERVAL '` + THRESHOLD_INTERVAL_DAYS + ` days'`
 
 // Find all toots we haven't boosted yet, but ought to
-var query = `SELECT id, updated_at
+var query = `SELECT id
   FROM public_toots
   WHERE
     favourites_count >= $1
@@ -43,28 +43,10 @@ var query = `SELECT id, updated_at
         pt2.reblog_of_id = public_toots.id
         AND pt2.account_id = $2
     )
-    AND NOT EXISTS (
-      SELECT 1
-      FROM blocks_ambassador
-      WHERE
-        public_toots.account_id = blocks_ambassador.account_id
-    )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
     AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'
   ORDER BY RANDOM()
   LIMIT $3`
-
-// adding this to the WHERE clause would let it skip cases where we're
-// blocked by the original poster, but we don't have read privs to blocks
-// and I'm not sure I want to change that.  -rt
-//
-//    AND NOT EXISTS (
-//      SELECT 1
-//      FROM blocks AS bl1
-//      WHERE
-//        public_toots.account_id = bl1.account_id
-//        AND bl1.target_account_id = 13104
-//    )
 
 console.dir('STARTING AMBASSADOR');
 console.log('\tDB_USER:', DB_USER);

@@ -24,17 +24,15 @@ CREATE VIEW public_toots AS
    WHERE statuses.visibility = 0
     AND statuses.updated_at > NOW() - INTERVAL '30 days'
     AND accounts.domain is null
+    AND NOT EXISTS (
+     SELECT 1 FROM blocks
+      WHERE statuses.account_id = blocks.account_id
+      AND blocks.target_account_id = 13104  -- Change 13104 to your ambassador's account ID
+     )
 ;
-
--- Change 13104 to your ambassador's account ID
-CREATE VIEW blocks_ambassador AS
-  SELECT account_id
-    FROM blocks
-    WHERE target_account_id = 13104;
 
 -- Make sure the role doesn't have access to anything undesireable
 REVOKE ALL FROM ambassador;
 
 -- Let ambassador select from the view
 GRANT SELECT ON public_toots TO ambassador;
-GRANT SELECT ON blocks_ambassador TO ambassador;
