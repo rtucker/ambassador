@@ -19,7 +19,11 @@ CREATE VIEW public_toots AS
     FROM statuses
     LEFT OUTER JOIN status_stats
      ON statuses.id = status_stats.status_id
-   WHERE visibility = 0
+    LEFT OUTER JOIN accounts
+     ON statuses.account_id = accounts.id
+   WHERE statuses.visibility = 0
+    AND statuses.updated_at > NOW() - INTERVAL '30 days'
+    AND accounts.domain is null
 ;
 
 -- Change 13104 to your ambassador's account ID
