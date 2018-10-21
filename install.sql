@@ -30,6 +30,9 @@ CREATE VIEW public_toots AS
      )
 ;
 
+-- performance helper
+CREATE INDEX index_status_stats_on_favourites_count ON status_stats (favourites_count);
+
 -- Make sure the role doesn't have access to anything undesireable
 REVOKE ALL FROM ambassador;
 
