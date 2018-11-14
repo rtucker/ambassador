@@ -45,7 +45,7 @@ var query = `SELECT id
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
     AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'
-  ORDER BY RANDOM()
+  ORDER BY favourites_count DESC
   LIMIT $3`
 
 // Same as query, but returns a count...
