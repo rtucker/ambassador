@@ -50,21 +50,6 @@ var query = `SELECT id
   ORDER BY favourites_count DESC
   LIMIT $3`
 
-// Same as query, but returns a count...
-var count_query = `SELECT count(id) AS boostable_count
-  FROM public_toots
-  WHERE
-    favourites_count >= $1
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public_toots AS pt2
-      WHERE
-        pt2.reblog_of_id = public_toots.id
-        AND pt2.account_id = $2
-    )
-    AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
-    AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'`
-
 console.dir('STARTING AMBASSADOR');
 console.log('\tDB_USER:', DB_USER);
 console.log('\tDB_NAME:', DB_NAME);
@@ -100,16 +85,6 @@ function getThreshold(client, f) {
   }
 }
 
-function getCount(client, threshold, account_id, f) {
-  client.query(count_query, [threshold, account_id], function (err, result) {
-    if (err) {
-      throw "error running count query: " + err;
-    }
-
-    return f(result.rows[0].boostable_count);
-  });
-}
-
 function cycle() {
   console.log('Cycle beginning');
   var client = new pg.Client(config);
@@ -126,10 +101,6 @@ function cycle() {
         if (threshold < 1) {
           throw "threshold too low: " + threshold;
         }
-
-        getCount(client, threshold, account_id, function (count) {
-          console.log('Boostable items: ' + count);
-        });
 
         client.query(query, [threshold, account_id, BOOSTS_PER_CYCLE], function (err, result) {
           if (err) {
