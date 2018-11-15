@@ -13,6 +13,8 @@ var BOOST_MAX_DAYS = process.env.BOOST_MAX_DAYS || 5;
 var THRESHOLD_CHECK_INTERVAL = process.env.THRESHOLD_CHECK_INTERVAL || 15; // cycles
 var CYCLE_INTERVAL = process.env.CYCLE_INTERVAL || 15; // minutes
 var BOOST_MIN_HOURS = process.env.BOOST_MIN_HOURS || 12;
+var THRESHOLD_NUMERATOR = process.env.THRESHOLD_NUMERATOR || 1;
+var THRESHOLD_DENOMINATOR = process.env.THRESHOLD_DENOMINATOR || 1;
 
 var config = {
   user: process.env.DB_USER || 'ambassador',
@@ -87,7 +89,7 @@ function getThreshold(client, f) {
         throw "error running threshold query: " + err;
       }
 
-      g_threshold = result.rows[0].threshold;
+      g_threshold = result.rows[0].threshold * THRESHOLD_NUMERATOR / THRESHOLD_DENOMINATOR;
       g_threshold_downcount = THRESHOLD_CHECK_INTERVAL;
       return f(g_threshold);
     });
