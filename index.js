@@ -15,6 +15,8 @@ var CYCLE_INTERVAL = process.env.CYCLE_INTERVAL || 15; // minutes
 var BOOST_MIN_HOURS = process.env.BOOST_MIN_HOURS || 12;
 var THRESHOLD_NUMERATOR = process.env.THRESHOLD_NUMERATOR || 1;
 var THRESHOLD_DENOMINATOR = process.env.THRESHOLD_DENOMINATOR || 1;
+var USER_BOOST_LIMIT = process.env.USER_BOOST_LIMIT || 3;
+var USER_BOOST_INTERVAL_HOURS = process.env.USER_BOOST_INTERVAL_HOURS || 24;
 
 var config = {
   user: process.env.DB_USER || 'ambassador',
@@ -34,16 +36,37 @@ var thresh_query = `SELECT ceil(avg(favourites_count)) AS threshold
     AND updated_at > NOW() - INTERVAL '` + THRESHOLD_INTERVAL_DAYS + ` days'`
 
 // Find all toots we haven't boosted yet, but ought to
-var query = `SELECT id
+// sub-query 1:
+// have we boosted this already?
+// sub-query 2:
+// if we look at how many statuses we've boosted from a given account over
+// the past n hours, is that number greater than three?
+
+var query = `SELECT public_toots.id
   FROM public_toots
   WHERE
-    favourites_count >= $1
+    favourites_count >= ceil($1)
     AND NOT EXISTS (
       SELECT 1
       FROM public_toots AS pt2
       WHERE
         pt2.reblog_of_id = public_toots.id
         AND pt2.account_id = $2
+    )
+    AND NOT EXISTS (
+      SELECT 1
+      FROM (
+        SELECT pt3.account_id, count(*) AS count
+        FROM public_toots pt3, public_toots
+        WHERE
+          pt3.id = public_toots.reblog_of_id
+          AND public_toots.account_id = $2
+          AND public_toots.updated_at > NOW() - INTERVAL '` + USER_BOOST_INTERVAL_HOURS + ` hours'
+        GROUP BY pt3.account_id
+      ) AS dt, public_toots AS pt4
+      WHERE
+        dt.count > ` + USER_BOOST_LIMIT + `
+        AND dt.account_id = pt4.account_id
     )
     AND updated_at > NOW() - INTERVAL '` + BOOST_MAX_DAYS + ` days'
     AND updated_at < NOW() - INTERVAL '` + BOOST_MIN_HOURS + ` hours'
@@ -62,6 +85,8 @@ console.log('\tTHRESHOLD_INTERVAL_DAYS:', THRESHOLD_INTERVAL_DAYS);
 console.log('\tBOOST_MAX_DAYS:', BOOST_MAX_DAYS);
 console.log('\tTHRESHOLD_CHECK_INTERVAL:', THRESHOLD_CHECK_INTERVAL);
 console.log('\tCYCLE_INTERVAL:', CYCLE_INTERVAL);
+console.log('\tUSER_BOOST_LIMIT:', USER_BOOST_LIMIT);
+console.log('\tUSER_BOOST_INTERVAL_HOURS:', USER_BOOST_INTERVAL_HOURS);
 
 var g_threshold_downcount = 0;
 var g_threshold = 0;
